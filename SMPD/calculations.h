@@ -18,16 +18,17 @@ class Calculations
 private:
     std::vector<float> m_acerAverages;
     std::vector<float> m_quercusAverages;
-    long long m_acerObjectsCount;
-    long long m_quercusObjectsCount;
+    size_t m_acerObjectsCount;
+    size_t m_quercusObjectsCount;
 
     float detereminant(matrix<float> m);
     void test();
 
 public:
     Calculations();
+    ~Calculations();
     void countAverage(const Database& database);
-    void countMatrixOfDifferences(const Database& database);
+    std::pair<float, float> countMatrixOfDifferences(const Database& database, size_t noOfFeatures);
     void printAverages();
 
 };

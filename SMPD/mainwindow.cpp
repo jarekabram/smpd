@@ -2,12 +2,8 @@
 #include "ui_mainwindow.h"
 #include <iostream>
 
-
-
 #include <QImage>
 #include <QDebug>
-
-
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -73,7 +69,7 @@ void MainWindow::on_FSpushButtonOpenFile_clicked()
 void MainWindow::on_FSpushButtonCompute_clicked()
 {
     int dimension = ui->FScomboBox->currentText().toInt();
-
+    Calculations calculations;
 
     if( ui->FSradioButtonFisher ->isChecked())
     {
@@ -114,9 +110,22 @@ void MainWindow::on_FSpushButtonCompute_clicked()
             ui->FStextBrowserDatabaseInfo->append("max_ind: "  +  QString::number(max_ind) + " " + QString::number(FLD));
           }
 
-        calculations.countAverage(database);
-//        calculations.printAverages();
-        calculations.countMatrixOfDifferences(database);
+        if(dimension < 2)
+        {
+            ui->FStextBrowserDatabaseInfo->append("Cannot count Fisher for just one feature");
+        }
+        else
+        {
+            calculations.countAverage(database);
+            auto result = calculations.countMatrixOfDifferences(database, static_cast<size_t>(dimension));
+            double min =  static_cast<double>(result.first);
+            double max =  static_cast<double>(result.second);
+            ui->FStextBrowserDatabaseInfo->append("==================");
+            ui->FStextBrowserDatabaseInfo->append("|| Number of Features : " + QString::number(dimension) + " ||");
+            ui->FStextBrowserDatabaseInfo->append("==================");
+            ui->FStextBrowserDatabaseInfo->append("Minimum: " + QString::number(min));
+            ui->FStextBrowserDatabaseInfo->append("Maximum: " + QString::number(max));
+        }
     }
 }
 

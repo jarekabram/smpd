@@ -58,7 +58,6 @@ private:
 
 private:
      Database database;
-     Calculations calculations;
 };
 
 #endif // MAINWINDOW_H

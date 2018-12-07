@@ -7,6 +7,13 @@ Calculations::Calculations()
     m_acerObjectsCount = 0;
     m_quercusObjectsCount = 0;
 }
+Calculations::~Calculations()
+{
+    m_acerAverages.clear();
+    m_quercusAverages.clear();
+    m_acerObjectsCount = 0;
+    m_quercusObjectsCount = 0;
+}
 
 void Calculations::countAverage(const Database& database)
 {
@@ -14,10 +21,10 @@ void Calculations::countAverage(const Database& database)
     {
         std::cout << it.first << " " << it.second << std::endl;
         if(it.first == "Acer"){
-            m_acerObjectsCount = it.second;
+            m_acerObjectsCount = static_cast<size_t>(it.second);
         }
         if(it.first == "Quercus"){
-            m_quercusObjectsCount = it.second;
+            m_quercusObjectsCount = static_cast<size_t>(it.second);
         }
     }
     auto objects = database.getObjects();
@@ -41,7 +48,7 @@ void Calculations::countAverage(const Database& database)
     }
 }
 
-void Calculations::countMatrixOfDifferences(const Database& database)
+std::pair<float, float> Calculations::countMatrixOfDifferences(const Database& database, size_t noOfFeatures)
 {
     std::vector<std::vector<float>> acer_features;
     std::vector<std::vector<float>> quercus_features;
@@ -54,11 +61,11 @@ void Calculations::countMatrixOfDifferences(const Database& database)
     std::vector<matrix<float>> acer_matrix_results;
     std::vector<matrix<float>> quercus_matrix_results;
 
-    acer_features.resize(64);
-    quercus_features.resize(64);
+    acer_features.resize(noOfFeatures);
+    quercus_features.resize(noOfFeatures);
 
     auto objects = database.getObjects();
-    for(int count = 0; count < 64; ++count)
+    for(size_t count = 0; count < noOfFeatures; ++count)
     {
         for(auto object : objects)
         {
@@ -75,12 +82,12 @@ void Calculations::countMatrixOfDifferences(const Database& database)
         }
     }
 
-    int acer_counter = 0;
-    for(int i = 0; i < 64; ++i)
+    size_t acer_counter = 0;
+    for(size_t i = 0; i < noOfFeatures; ++i)
     {
-        for(int j = ++acer_counter; j < 64; ++j)
+        for(size_t j = ++acer_counter; j < noOfFeatures; ++j)
         {
-            for(int k = 0; k < m_acerObjectsCount; k++)
+            for(size_t k = 0; k < m_acerObjectsCount; k++)
             {
                 acer_averages_matrix(0, k) = m_acerAverages[i];
                 acer_averages_matrix(1, k) = m_acerAverages[j];
@@ -93,12 +100,12 @@ void Calculations::countMatrixOfDifferences(const Database& database)
         }
     }
 
-    int quercus_counter = 0;
-    for(int i = 0; i < 64; ++i)
+    size_t quercus_counter = 0;
+    for(size_t i = 0; i < noOfFeatures; ++i)
     {
-        for(int j = ++quercus_counter; j < 64; ++j)
+        for(size_t j = ++quercus_counter; j < noOfFeatures; ++j)
         {
-            for(int k = 0; k < m_quercusObjectsCount; k++)
+            for(size_t k = 0; k < m_quercusObjectsCount; k++)
             {
                 quercus_averages_matrix(0, k) = m_quercusAverages[i];
                 quercus_averages_matrix(1, k) = m_quercusAverages[j];
@@ -107,7 +114,6 @@ void Calculations::countMatrixOfDifferences(const Database& database)
             }
             auto substracted_matrix = quercus_matrix - quercus_averages_matrix;
             auto result_matrix = prod(substracted_matrix, trans(substracted_matrix))/4;
-//            std::cout << result_matrix <<std::endl;
             quercus_matrix_results.emplace_back(result_matrix);
         }
     }
@@ -115,29 +121,32 @@ void Calculations::countMatrixOfDifferences(const Database& database)
     std::vector<float> final_results;
     matrix<float> acer_average(1,2);
     matrix<float> quercus_average(1,2);
-    int averages_counter = 0;
-    int results_counter = -1;
-    for(int i = 0; i < 64; ++i)
+    size_t averages_counter = 0;
+    size_t results_counter = 0;
+    for(size_t i = 0; i < noOfFeatures; ++i)
     {
-        for(int j = ++averages_counter; j < 64; ++j)
+        for(size_t j = ++averages_counter; j < noOfFeatures; ++j)
         {
-            ++results_counter;
             acer_average(0,0) = m_acerAverages[i];
             acer_average(0,1) = m_acerAverages[j];
             quercus_average(0,0) = m_quercusAverages[i];
             quercus_average(0,1) = m_quercusAverages[j];
             auto division = acer_average-quercus_average;
+            std::cout << "division: " << division << std::endl;
             auto distance = sqrt(pow(division(0,0), 2)+pow(division(0,1), 2));
-            auto sum = acer_matrix_results[results_counter] + acer_matrix_results[results_counter];
+            auto sum = acer_matrix_results[results_counter] + quercus_matrix_results[results_counter];
             auto result = distance/detereminant(sum);
             final_results.emplace_back(result);
-            std::cout << std::setprecision(100) << result << std::endl;
+            std::cout << std::setprecision(20) << result << std::endl;
+            ++results_counter;
         }
     }
-    auto minimum = *std::min_element(final_results.begin(), final_results.end());
-    auto maximum = *std::max_element(final_results.begin(), final_results.end());
-    std::cout << "minimum: " << minimum << " maximum: " << maximum << std::endl;
+    final_results.shrink_to_fit();
+    auto minimum = std::min_element(final_results.begin(), final_results.end());
+    auto maximum = std::max_element(final_results.begin(), final_results.end());
+    std::cout << "minimum: " << *minimum << " maximum: " << *maximum << std::endl;
 
+    return std::pair<float, float>(*minimum, *maximum);
 }
 
 void Calculations::printAverages()
@@ -153,7 +162,8 @@ void Calculations::printAverages()
 
 float Calculations::detereminant(matrix<float> m)
 {
-    return m(0,0)*m(1,1)-m(0,1)*m(1,0);
+    std::cout << "detereminant: " << (m(0,0)*m(1,1))-(m(0,1)*m(1,0)) << std::endl;
+    return (m(0,0)*m(1,1))-(m(0,1)*m(1,0));
 }
 
 void Calculations::test()
@@ -171,12 +181,12 @@ void Calculations::test()
 
     std::vector<int> v1 = { 22, 33, 44, 55 };
 
-    int counter = 0;
-    for(int i = 0; i < 4; ++i)
+    size_t counter = 0;
+    for(size_t i = 0; i < 4; ++i)
     {
-        for(int j = ++counter; j < 4; ++j)
+        for(size_t j = ++counter; j < 4; ++j)
         {
-            for(int k = 0; k < 4; k++)
+            for(size_t k = 0; k < 4; k++)
             {
                 m2(0, k) = v1[i];
                 m2(1, k) = v1[j];
