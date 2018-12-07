@@ -2,8 +2,7 @@
 
 Calculations::Calculations()
 {
-    m_acerAverages.resize(64);
-    m_quercusAverages.resize(64);
+
     m_acerObjectsCount = 0;
     m_quercusObjectsCount = 0;
 }
@@ -29,22 +28,42 @@ void Calculations::countAverage(const Database& database)
     }
     auto objects = database.getObjects();
 
+    std::vector<std::vector<float>> acer_features;
+    std::vector<std::vector<float>> quercus_features;
+
+    size_t acer_count = 0;
+    size_t quercus_count = 0;
     for(size_t i = 0; i < objects.size(); i++)
     {
         if(objects[i].getClassName() == "Acer"){
-            std::vector<float> features = objects[i].getFeatures();
-            for(size_t feature_counter = 0; feature_counter < features.size(); feature_counter++)
-            {
-                m_acerAverages[feature_counter] += features[feature_counter];
-            }
+            acer_features.emplace_back(objects[i].getFeatures());
+            acer_count = objects[i].getFeatures().size();
         }
         if(objects[i].getClassName() == "Quercus"){
-            std::vector<float> features = objects[i].getFeatures();
-            for(size_t feature_counter = 0; feature_counter < features.size(); feature_counter++)
-            {
-                m_quercusAverages[feature_counter] += features[feature_counter];
-            }
+            quercus_features.emplace_back(objects[i].getFeatures());
+            quercus_count = objects[i].getFeatures().size();
         }
+    }
+    float temp;
+    for(size_t i = 0; i < acer_count; ++i)
+    {
+        temp = 0;
+        for(size_t j = 0; j < m_acerObjectsCount; ++j)
+        {
+                temp += acer_features[j][i];
+        }
+        temp /= m_acerObjectsCount;
+        m_acerAverages.emplace_back(temp);
+    }
+    for(size_t i = 0; i < quercus_count; ++i)
+    {
+        temp = 0;
+        for(size_t j = 0; j < m_quercusObjectsCount; ++j)
+        {
+                temp += quercus_features[j][i];
+        }
+        temp /= m_quercusObjectsCount;
+        m_quercusAverages.emplace_back(temp);
     }
 }
 
@@ -132,12 +151,10 @@ std::pair<float, float> Calculations::countMatrixOfDifferences(const Database& d
             quercus_average(0,0) = m_quercusAverages[i];
             quercus_average(0,1) = m_quercusAverages[j];
             auto division = acer_average-quercus_average;
-            std::cout << "division: " << division << std::endl;
             auto distance = sqrt(pow(division(0,0), 2)+pow(division(0,1), 2));
             auto sum = acer_matrix_results[results_counter] + quercus_matrix_results[results_counter];
             auto result = distance/detereminant(sum);
             final_results.emplace_back(result);
-            std::cout << std::setprecision(20) << result << std::endl;
             ++results_counter;
         }
     }
@@ -162,7 +179,6 @@ void Calculations::printAverages()
 
 float Calculations::detereminant(matrix<float> m)
 {
-    std::cout << "detereminant: " << (m(0,0)*m(1,1))-(m(0,1)*m(1,0)) << std::endl;
     return (m(0,0)*m(1,1))-(m(0,1)*m(1,0));
 }
 
