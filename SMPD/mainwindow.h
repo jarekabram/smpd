@@ -10,7 +10,8 @@
 #include <QMessageBox>
 
 
-#include"database.h"
+#include "database.h"
+#include "calculations.h"
 
 namespace Ui {
 class MainWindow;
@@ -57,6 +58,7 @@ private:
 
 private:
      Database database;
+     Calculations calculations;
 };
 
 #endif // MAINWINDOW_H

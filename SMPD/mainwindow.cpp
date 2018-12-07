@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <iostream>
 
 
 
@@ -112,7 +113,11 @@ void MainWindow::on_FSpushButtonCompute_clicked()
 
             ui->FStextBrowserDatabaseInfo->append("max_ind: "  +  QString::number(max_ind) + " " + QString::number(FLD));
           }
-     }
+
+        calculations.countAverage(database);
+//        calculations.printAverages();
+        calculations.countMatrixOfDifferences(database);
+    }
 }
 
 
