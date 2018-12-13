@@ -110,21 +110,14 @@ void MainWindow::on_FSpushButtonCompute_clicked()
             ui->FStextBrowserDatabaseInfo->append("max_ind: "  +  QString::number(max_ind) + " " + QString::number(FLD));
           }
 
-        if(dimension < 2)
-        {
-            ui->FStextBrowserDatabaseInfo->append("Cannot count Fisher for just one feature");
-        }
-        else
+        if(dimension >= 2)
         {
             calculations.countAverage(database);
-            auto result = calculations.countMatrixOfDifferences(database, static_cast<size_t>(dimension));
-            double min =  static_cast<double>(result.first);
-            double max =  static_cast<double>(result.second);
+            auto result = calculations.countMatrixOfDifferences(database, static_cast<size_t>(database.getNoFeatures()), dimension);
             ui->FStextBrowserDatabaseInfo->append("==================");
             ui->FStextBrowserDatabaseInfo->append("|| Number of Features : " + QString::number(dimension) + " ||");
             ui->FStextBrowserDatabaseInfo->append("==================");
-            ui->FStextBrowserDatabaseInfo->append("Minimum: " + QString::number(min));
-            ui->FStextBrowserDatabaseInfo->append("Maximum: " + QString::number(max));
+            ui->FStextBrowserDatabaseInfo->append("Maximum: " + QString::number(result));
         }
     }
 }

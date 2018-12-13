@@ -1,3 +1,4 @@
+#include <QDebug>
 #include "calculations.h"
 
 Calculations::Calculations()
@@ -67,18 +68,32 @@ void Calculations::countAverage(const Database& database)
     }
 }
 
-std::pair<float, float> Calculations::countMatrixOfDifferences(const Database& database, size_t noOfFeatures)
+std::vector<std::vector<int>> Calculations::combine(int n, int k) {
+	std::vector<std::vector<int>> v;
+	int i = 0;
+	std::vector<int> p(k, 0);
+	while (i >= 0) {
+		p[i]++;
+		if (p[i] > n) --i;
+		else if (i == k - 1) 
+			v.emplace_back(p);
+		else {
+			++i;
+			p[i] = p[i - 1];
+		}
+	}
+	return v;
+}
+
+float Calculations::countMatrixOfDifferences(const Database& database, size_t noOfFeatures, int dimension)
 {
     std::vector<std::vector<float>> acer_features;
     std::vector<std::vector<float>> quercus_features;
 
-    matrix<float> acer_matrix(2, m_acerObjectsCount);
-    matrix<float> acer_averages_matrix(2, m_acerObjectsCount);
-    matrix<float> quercus_matrix(2, m_quercusObjectsCount);
-    matrix<float> quercus_averages_matrix(2, m_quercusObjectsCount);
-
-    std::vector<matrix<float>> acer_matrix_results;
-    std::vector<matrix<float>> quercus_matrix_results;
+	matrix<float> acer_averages_matrix(noOfFeatures, m_acerObjectsCount);
+	matrix<float> quercus_averages_matrix(noOfFeatures, m_quercusObjectsCount);
+	
+	std::vector<float> fisher_results;
 
     acer_features.resize(noOfFeatures);
     quercus_features.resize(noOfFeatures);
@@ -90,80 +105,75 @@ std::pair<float, float> Calculations::countMatrixOfDifferences(const Database& d
         {
             if(object.getClassName() == "Acer"){
                 auto features = object.getFeatures();
-                //std::cout << count << " " << features[count] << std::endl;
                 acer_features[count].emplace_back(features[count]);
             }
             if(object.getClassName() == "Quercus"){
                 auto features = object.getFeatures();
-                //std::cout << count << " " << features[count] << std::endl;
                 quercus_features[count].emplace_back(features[count]);
             }
         }
     }
 
-    size_t acer_counter = 0;
     for(size_t i = 0; i < noOfFeatures; ++i)
     {
-        for(size_t j = ++acer_counter; j < noOfFeatures; ++j)
+        for(size_t j = 0; j < m_acerObjectsCount; j++)
         {
-            for(size_t k = 0; k < m_acerObjectsCount; k++)
-            {
-                acer_averages_matrix(0, k) = m_acerAverages[i];
-                acer_averages_matrix(1, k) = m_acerAverages[j];
-                acer_matrix(0, k) = acer_features[i][k];
-                acer_matrix(1, k) = acer_features[j][k];
-            }
-            auto substracted_matrix = acer_matrix - acer_averages_matrix;
-            auto result_matrix = prod(substracted_matrix, trans(substracted_matrix))/4;
-            acer_matrix_results.emplace_back(result_matrix);
+			acer_averages_matrix(i, j) = acer_features[i][j] - m_acerAverages[i];
         }
     }
+	for (size_t i = 0; i < noOfFeatures; ++i)
+	{
+		for (size_t j = 0; j < m_quercusObjectsCount; j++)
+		{
+			quercus_averages_matrix(i, j) = quercus_features[i][j] - m_quercusAverages[i];
+		}
+	}
 
-    size_t quercus_counter = 0;
-    for(size_t i = 0; i < noOfFeatures; ++i)
-    {
-        for(size_t j = ++quercus_counter; j < noOfFeatures; ++j)
-        {
-            for(size_t k = 0; k < m_quercusObjectsCount; k++)
-            {
-                quercus_averages_matrix(0, k) = m_quercusAverages[i];
-                quercus_averages_matrix(1, k) = m_quercusAverages[j];
-                quercus_matrix(0, k) = quercus_features[i][k];
-                quercus_matrix(1, k) = quercus_features[j][k];
-            }
-            auto substracted_matrix = quercus_matrix - quercus_averages_matrix;
-            auto result_matrix = prod(substracted_matrix, trans(substracted_matrix))/4;
-            quercus_matrix_results.emplace_back(result_matrix);
-        }
-    }
+	auto combinations = combine(noOfFeatures, dimension);
 
-    std::vector<float> final_results;
-    matrix<float> acer_average(1,2);
-    matrix<float> quercus_average(1,2);
-    size_t averages_counter = 0;
-    size_t results_counter = 0;
-    for(size_t i = 0; i < noOfFeatures; ++i)
-    {
-        for(size_t j = ++averages_counter; j < noOfFeatures; ++j)
-        {
-            acer_average(0,0) = m_acerAverages[i];
-            acer_average(0,1) = m_acerAverages[j];
-            quercus_average(0,0) = m_quercusAverages[i];
-            quercus_average(0,1) = m_quercusAverages[j];
-            auto division = acer_average-quercus_average;
-            auto distance = sqrt(pow(division(0,0), 2)+pow(division(0,1), 2));
-            auto sum = acer_matrix_results[results_counter] + quercus_matrix_results[results_counter];
-            auto result = distance/detereminant(sum);
-            final_results.emplace_back(result);
-            ++results_counter;
-        }
-    }
-    final_results.shrink_to_fit();
-    auto minimum = std::min_element(final_results.begin(), final_results.end());
-    auto maximum = std::max_element(final_results.begin(), final_results.end());
-    std::cout << "minimum: " << *minimum << " maximum: " << *maximum << std::endl;
+	matrix<float> acer_temp(dimension, m_acerObjectsCount);
+	matrix<float> quercus_temp(dimension, m_quercusObjectsCount);
+	matrix<float> total_averages(dimension, 1);
+	
+	initialize_matrix(total_averages);
+	int objects_counter;
+	for (size_t i = 0; i < combinations.size(); ++i)
+	{
+		objects_counter = 0;
+		for (size_t j = 0; j < combinations[i].size(); ++j) 
+		{
+			total_averages(j, 0) = m_acerAverages[j];
+			total_averages(j, 0) -= m_quercusAverages[j];
+			for (size_t count = 0; count < m_acerObjectsCount; ++count) 
+			{
+				acer_temp(objects_counter, count) = acer_averages_matrix(j, count);
+			}
+			for (size_t count = 0; count < m_quercusObjectsCount; ++count)
+			{
+				quercus_temp(objects_counter, count) = quercus_averages_matrix(j, count);
+			}
+			++objects_counter;
+		}
 
-    return std::pair<float, float>(*minimum, *maximum);
+		auto acer_transposed = boost::numeric::ublas::trans(acer_temp);
+		auto acer_mult = prod(acer_temp, acer_transposed);
+		matrix<float> acer_div = acer_mult / noOfFeatures;
+		auto acer_det = ::determinant<float>(acer_div);
+
+		auto quercus_transposed = boost::numeric::ublas::trans(acer_temp);
+		auto quercus_mult = prod(acer_temp, acer_transposed);
+		matrix<float> quercus_div = acer_mult / noOfFeatures;
+		auto quercus_det = ::determinant<float>(acer_div);
+
+		auto dis = distance(total_averages);
+		auto det_div = acer_det;
+		det_div += quercus_det;
+		auto fisher = dis / det_div;
+		fisher_results.emplace_back(fisher);
+	}
+	auto maximum = std::max_element(fisher_results.begin(), fisher_results.end());
+	
+    return *maximum;
 }
 
 void Calculations::printAverages()
@@ -177,40 +187,47 @@ void Calculations::printAverages()
     }
 }
 
-float Calculations::detereminant(matrix<float> m)
+int factorial(int value)
 {
-    return (m(0,0)*m(1,1))-(m(0,1)*m(1,0));
+	int result = 1;
+
+	for (int i = 1; i <= value; i++)
+	{
+		result *= i;
+	}
+
+	return result;
 }
 
-void Calculations::test()
+float Calculations::distance(matrix<float> m)
 {
-    matrix<int> m1(2, 4);
-    matrix<int> m2(2, 4);
+	float temp = 0;
+	for (int i = 0; i < m.size1(); ++i)
+	{
+		float temp1 = m(i, 0);
+		temp += (temp1*temp1);
+	}
 
-    std::vector<std::vector<int>> v =
-    {
-        {1,2,3,4},
-        {5,6,7,8},
-        {9,10,11,12},
-        {13,14,15,16}
-    };
-
-    std::vector<int> v1 = { 22, 33, 44, 55 };
-
-    size_t counter = 0;
-    for(size_t i = 0; i < 4; ++i)
-    {
-        for(size_t j = ++counter; j < 4; ++j)
-        {
-            for(size_t k = 0; k < 4; k++)
-            {
-                m2(0, k) = v1[i];
-                m2(1, k) = v1[j];
-                m1(0, k) = v[i][k];
-                m1(1, k) = v[j][k];
-            }
-            std::cout << m1 <<std::endl;
-            std::cout << m2 <<std::endl;
-        }
-    }
+	return sqrt(temp);
+}
+void Calculations::initialize_matrix(matrix<float>& m)
+{
+	for (int i = 0; i < m.size1(); ++i)
+	{
+		for (int j = 0; j < m.size2(); ++j) 
+		{
+			m(i, j) = 0;
+		}
+	}
+}
+void Calculations::print_matrix(matrix<float> m)
+{
+	for (int i = 0; i < m.size1(); ++i) 
+	{
+		for (int j = 0; j < m.size2(); ++j) 
+		{
+			qInfo() << m(i, j);
+		}
+		qInfo() << "\n";
+	}
 }

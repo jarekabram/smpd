@@ -5,11 +5,9 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/qvm/mat_operations.hpp>
 
 #include "database.h"
+#include "matrixutil.hpp"
 
 using namespace boost::numeric::ublas;
 
@@ -21,14 +19,16 @@ private:
     size_t m_acerObjectsCount;
     size_t m_quercusObjectsCount;
 
-    float detereminant(matrix<float> m);
-    void test();
-
+	std::vector<std::vector<int>> combine(int n, int k);
+	float distance(matrix<float> m);
+	void print_matrix(matrix<float> m); 
+	void initialize_matrix(matrix<float>& m);
+	
 public:
     Calculations();
     ~Calculations();
     void countAverage(const Database& database);
-    std::pair<float, float> countMatrixOfDifferences(const Database& database, size_t noOfFeatures);
+    float countMatrixOfDifferences(const Database& database, size_t noOfFeatures, int dimension);
     void printAverages();
 
 };
