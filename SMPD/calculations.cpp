@@ -144,29 +144,31 @@ float Calculations::countMatrixOfDifferences(const Database& database, size_t no
 		{
 			total_averages(j, 0) = m_acerAverages[j];
 			total_averages(j, 0) -= m_quercusAverages[j];
+
+			qInfo() << combinations[i][j] - 1;
 			for (size_t count = 0; count < m_acerObjectsCount; ++count) 
 			{
-				acer_temp(objects_counter, count) = acer_averages_matrix(j, count);
+				acer_temp(objects_counter, count) = acer_averages_matrix(combinations[i][j]-1, count);
 			}
 			for (size_t count = 0; count < m_quercusObjectsCount; ++count)
 			{
-				quercus_temp(objects_counter, count) = quercus_averages_matrix(j, count);
+				quercus_temp(objects_counter, count) = quercus_averages_matrix(combinations[i][j]-1, count);
 			}
 			++objects_counter;
-		}
 
+		}
 		auto acer_transposed = boost::numeric::ublas::trans(acer_temp);
 		auto acer_mult = prod(acer_temp, acer_transposed);
 		matrix<float> acer_div = acer_mult / noOfFeatures;
-		auto acer_det = ::determinant<float>(acer_div);
+		float acer_det = ::determinant<float>(acer_div);
 
-		auto quercus_transposed = boost::numeric::ublas::trans(acer_temp);
-		auto quercus_mult = prod(acer_temp, acer_transposed);
-		matrix<float> quercus_div = acer_mult / noOfFeatures;
-		auto quercus_det = ::determinant<float>(acer_div);
+		auto quercus_transposed = boost::numeric::ublas::trans(quercus_temp);
+		auto quercus_mult = prod(quercus_temp, quercus_transposed);
+		matrix<float> quercus_div = quercus_mult / noOfFeatures;
+		float quercus_det = ::determinant<float>(quercus_div);
 
 		auto dis = distance(total_averages);
-		auto det_div = acer_det;
+		float det_div = acer_det;
 		det_div += quercus_det;
 		auto fisher = dis / det_div;
 		fisher_results.emplace_back(fisher);
