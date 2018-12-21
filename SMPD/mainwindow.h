@@ -32,6 +32,7 @@ private:
 
     void FSupdateButtonState(void);
     void FSsetButtonState(bool state);
+	void countMaxInd(float& FLD, int& max_ind);
 
 
 

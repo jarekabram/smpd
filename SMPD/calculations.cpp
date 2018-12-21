@@ -85,7 +85,7 @@ std::vector<std::vector<int>> Calculations::combine(int n, int k) {
 	return v;
 }
 
-float Calculations::countMatrixOfDifferences(const Database& database, size_t noOfFeatures, int dimension)
+float Calculations::countFisher(const Database& database, size_t noOfFeatures, int dimension)
 {
     std::vector<std::vector<float>> acer_features;
     std::vector<std::vector<float>> quercus_features;
@@ -142,10 +142,10 @@ float Calculations::countMatrixOfDifferences(const Database& database, size_t no
 		objects_counter = 0;
 		for (size_t j = 0; j < combinations[i].size(); ++j) 
 		{
-			total_averages(j, 0) = m_acerAverages[j];
-			total_averages(j, 0) -= m_quercusAverages[j];
+			total_averages(j, 0) = m_acerAverages[combinations[i][j] - 1];
+			total_averages(j, 0) -= m_quercusAverages[combinations[i][j] - 1];
 
-			qInfo() << combinations[i][j] - 1;
+			qInfo() << combinations[i][j];
 			for (size_t count = 0; count < m_acerObjectsCount; ++count) 
 			{
 				acer_temp(objects_counter, count) = acer_averages_matrix(combinations[i][j]-1, count);
@@ -160,11 +160,14 @@ float Calculations::countMatrixOfDifferences(const Database& database, size_t no
 		auto acer_transposed = boost::numeric::ublas::trans(acer_temp);
 		auto acer_mult = prod(acer_temp, acer_transposed);
 		matrix<float> acer_div = acer_mult / noOfFeatures;
+		print_matrix(acer_div);
 		float acer_det = ::determinant<float>(acer_div);
+		qDebug() << "acer_det: " << acer_det;
 
 		auto quercus_transposed = boost::numeric::ublas::trans(quercus_temp);
 		auto quercus_mult = prod(quercus_temp, quercus_transposed);
 		matrix<float> quercus_div = quercus_mult / noOfFeatures;
+		print_matrix(quercus_div);
 		float quercus_det = ::determinant<float>(quercus_div);
 
 		auto dis = distance(total_averages);
@@ -172,10 +175,80 @@ float Calculations::countMatrixOfDifferences(const Database& database, size_t no
 		det_div += quercus_det;
 		auto fisher = dis / det_div;
 		fisher_results.emplace_back(fisher);
+		qDebug() << "fisher: " << fisher;
 	}
 	auto maximum = std::max_element(fisher_results.begin(), fisher_results.end());
 	
     return *maximum;
+}
+
+void Calculations::countSFS(const Database& database, size_t noOfFeatures, int dimension, float best, int index)
+{
+	std::vector<std::vector<float>> acer_features;
+	std::vector<std::vector<float>> quercus_features;
+
+	acer_features.resize(noOfFeatures);
+	quercus_features.resize(noOfFeatures);
+
+	auto objects = database.getObjects();
+	for (int count = 0; count < noOfFeatures; ++count)
+	{
+		for (auto object : objects)
+		{
+			if (object.getClassName() == "Acer") {
+				auto features = object.getFeatures();
+				acer_features[count].emplace_back(features[count]);
+			}
+			if (object.getClassName() == "Quercus") {
+				auto features = object.getFeatures();
+				quercus_features[count].emplace_back(features[count]);
+			}
+		}
+	}
+
+	std::vector<float> acer_averages;
+	std::vector<float> acer_stds;
+	std::vector<float> quercus_averages;
+	std::vector<float> quercus_stds;
+	std::vector<float> fishers;
+
+	acer_averages.resize(noOfFeatures);
+	acer_stds.resize(noOfFeatures);
+	quercus_averages.resize(noOfFeatures);
+	quercus_stds.resize(noOfFeatures);
+
+	for (int dim = 0; dim < dimension; ++dim) 
+	{
+		for (int i = 0; i < acer_features.size(); ++i)
+		{
+			for (int j = 0; j < m_acerObjectsCount; ++j)
+			{
+				acer_averages[i] += acer_features[i][j];
+				acer_stds[i] += acer_features[i][j] * acer_features[i][j];
+			}
+			for (int j = 0; j < m_quercusObjectsCount; ++j)
+			{
+				quercus_averages[i] += quercus_features[i][j];
+				quercus_stds[i] += quercus_features[i][j] * quercus_features[i][j];
+			}
+			acer_averages[i] /= m_acerObjectsCount;
+			acer_stds[i] = std::sqrt(acer_stds[i] / m_acerObjectsCount - acer_averages[i] * acer_averages[i]);
+			quercus_averages[i] /= m_quercusObjectsCount;
+			quercus_stds[i] = std::sqrt(quercus_stds[i] / m_quercusObjectsCount - quercus_averages[i] * quercus_averages[i]);
+			auto fisher = std::abs(acer_averages[i] - quercus_averages[i]) / (acer_stds[i] + quercus_stds[i]);
+			fishers.emplace_back(fisher);
+		}
+		auto max = std::max_element(fishers.begin(), fishers.end());
+		auto index = std::distance(fishers.begin(), max);
+		qInfo() << "max: " << *max << " index: " << index;
+		acer_features.erase(acer_features.begin()+index);
+		
+
+	}
+}
+float Calculations::detereminant(matrix<float> m)
+{
+	return m(0, 0)*m(1, 1) - m(0, 1)*m(1, 0);
 }
 
 void Calculations::printAverages()
@@ -189,23 +262,12 @@ void Calculations::printAverages()
     }
 }
 
-int factorial(int value)
-{
-	int result = 1;
-
-	for (int i = 1; i <= value; i++)
-	{
-		result *= i;
-	}
-
-	return result;
-}
-
 float Calculations::distance(matrix<float> m)
 {
 	float temp = 0;
 	for (int i = 0; i < m.size1(); ++i)
 	{
+		qDebug() << m(i, 0);
 		float temp1 = m(i, 0);
 		temp += (temp1*temp1);
 	}
@@ -228,8 +290,8 @@ void Calculations::print_matrix(matrix<float> m)
 	{
 		for (int j = 0; j < m.size2(); ++j) 
 		{
-			qInfo() << m(i, j);
+			qDebug() << m(i, j) << " ";
 		}
-		qInfo() << "\n";
+		qDebug() << "\n";
 	}
 }

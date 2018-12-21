@@ -21,6 +21,7 @@ private:
 
 	std::vector<std::vector<int>> combine(int n, int k);
 	float distance(matrix<float> m);
+	float detereminant(matrix<float> m);
 	void print_matrix(matrix<float> m); 
 	void initialize_matrix(matrix<float>& m);
 	
@@ -28,7 +29,8 @@ public:
     Calculations();
     ~Calculations();
     void countAverage(const Database& database);
-    float countMatrixOfDifferences(const Database& database, size_t noOfFeatures, int dimension);
+    float countFisher(const Database& database, size_t noOfFeatures, int dimension);
+	void countSFS(const Database& database, size_t noOfFeatures, int dimension, float best, int index);
     void printAverages();
 
 };
